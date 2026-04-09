@@ -106,6 +106,33 @@
     .footer { padding: 14px; font-size: 11px; letter-spacing: 2px; }
   }
 
+
+  .manager-panel { background: #0d1b3e; border: 1px solid rgba(255,215,0,0.18); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
+  .manager-top { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom: 10px; }
+  .manager-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--bb-yellow); }
+  .manager-sub { color: rgba(255,255,255,0.7); font-size: 13px; }
+  .manager-toggle { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; border: 1px solid rgba(255,215,0,0.35); background: var(--bb-yellow); color: var(--bb-blue); padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+  .manager-body.hidden { display:none; }
+  .manager-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .manager-field label { display:block; margin-bottom:4px; color: rgba(255,255,255,0.75); font-size: 12px; }
+  .manager-field input, .manager-field select { width:100%; background: rgba(0,0,0,0.35); border:1px solid rgba(255,215,0,0.22); border-radius: 6px; color: white; font-family:'Barlow', sans-serif; font-size: 14px; padding: 9px 10px; }
+  .manager-field input:focus, .manager-field select:focus { outline:none; border-color: var(--bb-yellow); }
+  .manager-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top: 12px; }
+  .manager-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight:700; letter-spacing:1px; text-transform: uppercase; border-radius:6px; padding: 9px 14px; cursor:pointer; border:1px solid rgba(255,215,0,0.35); }
+  .manager-btn.primary { background: var(--bb-yellow); color: var(--bb-blue); }
+  .manager-btn.secondary { background: transparent; color: rgba(255,215,0,0.82); }
+  .manager-status { margin-top: 10px; min-height: 18px; font-size: 13px; color: #9ee29e; }
+  .manual-section { margin-bottom: 28px; }
+  .manual-header { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom: 10px; }
+  .manual-title { font-family:'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 1px; color: var(--bb-yellow); }
+  .manual-list { display:grid; gap:8px; }
+  .manual-item { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 12px; border:1px solid rgba(255,215,0,0.14); border-radius:8px; background: rgba(255,255,255,0.02); }
+  .manual-item-main { display:flex; flex-direction:column; gap:4px; }
+  .manual-item-title { font-family:'Barlow Condensed', sans-serif; font-size:18px; font-weight:600; }
+  .manual-item-meta { font-size:12px; color: rgba(255,255,255,0.65); }
+  .delete-btn { border:1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.04); color: white; border-radius:6px; padding:7px 10px; cursor:pointer; font-size:12px; }
+  .empty-note { color: rgba(255,255,255,0.55); font-size: 13px; }
+
 </style>
 </head>
 <body>
@@ -143,8 +170,56 @@
   <div class="ticker"><span class="ticker-inner" id="ticker-text">Loading...</span></div>
 </div>
 
-<div class="main" id="main-content"></div>
+
+<div class="main" id="main-content-wrap">
+  <div class="manager-panel">
+    <div class="manager-top">
+      <div>
+        <div class="manager-title">Manual Add</div>
+        <div class="manager-sub">Add new movies right from your phone or browser. Entries save to your shared family cloud app.</div>
+      </div>
+      <button class="manager-toggle" id="toggle-manager">Add / Manage Movies</button>
+    </div>
+    <div class="manager-body hidden" id="manager-body">
+      <form id="add-movie-form">
+        <div class="manager-grid">
+          <div class="manager-field" style="grid-column: span 2; min-width: 0;">
+            <label for="movie-title">Title</label>
+            <input id="movie-title" name="title" type="text" required placeholder="Movie title">
+          </div>
+          <div class="manager-field">
+            <label for="movie-source">Source</label>
+            <select id="movie-source" name="source">
+              <option value="dvd">DVD</option>
+              <option value="prime">Prime</option>
+            </select>
+          </div>
+          <div class="manager-field">
+            <label for="movie-genre">Genre</label>
+            <select id="movie-genre" name="genre"></select>
+          </div>
+          <div class="manager-field">
+            <label for="movie-page">Page</label>
+            <input id="movie-page" name="page" type="number" min="1" step="1" placeholder="Binder page">
+          </div>
+          <div class="manager-field">
+            <label for="movie-slot">Slot</label>
+            <input id="movie-slot" name="slot" type="text" maxlength="6" placeholder="A, B, C...">
+          </div>
+        </div>
+        <div class="manager-actions">
+          <button class="manager-btn primary" type="submit">Save Movie</button>
+          <button class="manager-btn secondary" type="button" id="export-movies">Export Cloud Added Movies</button>
+        </div>
+        <div class="manager-status" id="manager-status"></div>
+      </form>
+    </div>
+  </div>
+  <div id="manual-movie-section"></div>
+  <div class="main" id="main-content"></div>
+</div>
 <div class="no-results" id="no-results">NO TITLES FOUND</div>
+
 <div class="footer">★ &nbsp; YOUR PERSONAL BLOCKBUSTER &nbsp; ★ &nbsp; DVD BINDER + PRIME VIDEO LIBRARY &nbsp; ★</div>
 
 <script>
@@ -705,44 +780,174 @@ function getGenre(t) {
 
 const genreOrder = ['Harry Potter','Lord of the Rings / Hobbit','Star Wars','Resident Evil','Alien Franchise','Pirates of the Caribbean','Hunger Games','Vampire & Supernatural','Superhero','Action / Adventure','Sci-Fi','Fantasy','Thriller / Crime','Drama','Comedy','Horror','Horror-Comedy','Pixar','Family / Animation','Illumination / Animation','Spooky Animation','Special / Comedy','Other'];
 
-const dvds = ALL.map(d => ({...d, genre: getGenre(d.t), seriesInfo: SERIES[d.t] || null}));
-const sorted = [...dvds].sort((a,b) => {
-  let ai = genreOrder.indexOf(a.genre); if(ai<0)ai=99;
-  let bi = genreOrder.indexOf(b.genre); if(bi<0)bi=99;
-  if(ai!==bi) return ai-bi;
-  // within genre: sort by series then num, else alpha
-  const as = a.seriesInfo, bs = b.seriesInfo;
-  if(as && bs && as.series === bs.series) {
-    const an = parseFloat(as.num)||0, bn = parseFloat(bs.num)||0;
-    return an-bn;
+
+const SUPABASE_URL = 'https://prgivcziksnywptcuzoh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4emn4Phg_l_iIVWukA67JQ_aeofzxlD';
+const MOVIES_ENDPOINT = `${SUPABASE_URL}/rest/v1/movies`;
+
+let sharedMoviesCache = [];
+let sharedMoviesLoaded = false;
+
+const manualSection = document.getElementById('manual-movie-section');
+const managerBody = document.getElementById('manager-body');
+const managerStatus = document.getElementById('manager-status');
+const genreSelect = document.getElementById('movie-genre');
+const form = document.getElementById('add-movie-form');
+
+function setManagerStatus(message, ok=true) {
+  managerStatus.textContent = message;
+  managerStatus.style.color = ok ? '#9ee29e' : '#ffb3b3';
+}
+
+function supabaseHeaders(extra = {}) {
+  return {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${SUPABASE_KEY}`,
+    ...extra,
+  };
+}
+
+async function loadSharedMovies(force=false) {
+  if (sharedMoviesLoaded && !force) return sharedMoviesCache;
+  try {
+    const response = await fetch(`${MOVIES_ENDPOINT}?select=id,title,genre,source,page,slot,created_at&order=created_at.desc`, {
+      headers: supabaseHeaders()
+    });
+    if (!response.ok) throw new Error(`Load failed: ${response.status}`);
+    const rows = await response.json();
+    sharedMoviesCache = (Array.isArray(rows) ? rows : []).map(row => ({
+      customId: `db_${row.id}`,
+      dbId: row.id,
+      t: row.title || '',
+      genre: row.genre || getGenre(row.title || ''),
+      s: row.source || 'dvd',
+      p: row.page ?? '',
+      i: row.slot ?? '',
+      created_at: row.created_at || null,
+    }));
+    sharedMoviesLoaded = true;
+    return sharedMoviesCache;
+  } catch (error) {
+    console.error(error);
+    setManagerStatus('Could not reach the cloud database right now.', false);
+    sharedMoviesCache = [];
+    sharedMoviesLoaded = true;
+    return sharedMoviesCache;
   }
-  if(as && bs && as.series !== bs.series) return as.series.localeCompare(bs.series);
-  if(as && !bs) return -1;
-  if(!as && bs) return 1;
-  return a.t.localeCompare(b.t);
-});
+}
 
-const dvdCount = dvds.filter(d=>d.s==='dvd').length;
-const primeCount = dvds.filter(d=>d.s==='prime').length;
-document.getElementById('total-count').textContent = dvds.length;
-document.getElementById('dvd-count').textContent = dvdCount;
-document.getElementById('prime-count').textContent = primeCount;
-document.getElementById('genre-count').textContent = [...new Set(dvds.map(d=>d.genre))].length;
+function enhanceMovie(d, isCustom=false) {
+  const title = (d.t || '').trim();
+  const genre = d.genre || getGenre(title);
+  return {
+    ...d,
+    t: title,
+    genre,
+    s: d.s || 'dvd',
+    p: d.p || '',
+    i: d.i || '',
+    isCustom,
+    customId: d.customId || null,
+    dbId: d.dbId || null,
+    created_at: d.created_at || null,
+    seriesInfo: SERIES[title] || null,
+  };
+}
 
-const shuffled = [...dvds].sort(()=>Math.random()-0.5).slice(0,60);
-document.getElementById('ticker-text').textContent = shuffled.map(d=>d.t).join(' ★ ') + ' ★ ';
+function allGenresForSelect() {
+  return [...new Set([...genreOrder, ...ALL.map(d => getGenre(d.t)), ...sharedMoviesCache.map(d => d.genre || getGenre(d.t))])].filter(Boolean);
+}
 
-const genres = [...new Set(sorted.map(d=>d.genre))];
+function populateGenreSelect() {
+  const current = genreSelect.value;
+  const genres = allGenresForSelect();
+  genreSelect.innerHTML = genres.map(g => `<option value="${g}">${g}</option>`).join('');
+  if (genres.includes(current)) genreSelect.value = current;
+}
+
+function getBaseMovies() {
+  return ALL.map(d => enhanceMovie(d, false));
+}
+
+function getCustomMovies() {
+  return sharedMoviesCache.map(d => enhanceMovie(d, true));
+}
+
+function sortMovies(list) {
+  return [...list].sort((a,b) => {
+    let ai = genreOrder.indexOf(a.genre); if(ai<0) ai=99;
+    let bi = genreOrder.indexOf(b.genre); if(bi<0) bi=99;
+    if(ai!==bi) return ai-bi;
+    const as = a.seriesInfo, bs = b.seriesInfo;
+    if(as && bs && as.series === bs.series) {
+      const an = parseFloat(as.num)||0, bn = parseFloat(bs.num)||0;
+      if (an !== bn) return an-bn;
+    }
+    if(as && bs && as.series !== bs.series) {
+      const cmp = as.series.localeCompare(bs.series);
+      if (cmp !== 0) return cmp;
+    }
+    if(as && !bs) return -1;
+    if(!as && bs) return 1;
+    return a.t.localeCompare(b.t);
+  });
+}
+
+function getAllMovies() {
+  return sortMovies([...getBaseMovies(), ...getCustomMovies()]);
+}
+
+function updateStats(data) {
+  const dvdCount = data.filter(d=>d.s==='dvd').length;
+  const primeCount = data.filter(d=>d.s==='prime').length;
+  document.getElementById('total-count').textContent = data.length;
+  document.getElementById('dvd-count').textContent = dvdCount;
+  document.getElementById('prime-count').textContent = primeCount;
+  document.getElementById('genre-count').textContent = [...new Set(data.map(d=>d.genre))].length;
+  const shuffled = [...data].sort(()=>Math.random()-0.5).slice(0,60);
+  document.getElementById('ticker-text').textContent = shuffled.map(d=>d.t).join(' ★ ') + (shuffled.length ? ' ★ ' : '');
+}
+
 const gf = document.getElementById('genre-filters');
-genres.forEach(g => {
-  const btn = document.createElement('button');
-  btn.className='filter-btn'; btn.dataset.genre=g; btn.textContent=g;
-  gf.appendChild(btn);
-});
+function renderGenreFilters(data) {
+  const genres = [...new Set(sortMovies(data).map(d=>d.genre))];
+  const previous = activeGenre;
+  gf.innerHTML = '<button class="filter-btn active" data-genre="all">All Genres</button>';
+  genres.forEach(g => {
+    const btn = document.createElement('button');
+    btn.className='filter-btn'; btn.dataset.genre=g; btn.textContent=g;
+    if (g === previous) btn.classList.add('active');
+    gf.appendChild(btn);
+  });
+  if (previous !== 'all' && !genres.includes(previous)) {
+    activeGenre = 'all';
+    gf.querySelector('[data-genre="all"]').classList.add('active');
+  }
+}
 
 function seriesPill(info) {
   if(!info) return '';
   return `<span class="series-pill">${info.series} #${info.num}</span>`;
+}
+
+function renderManualList(customItems) {
+  manualSection.innerHTML = `
+    <div class="manual-section">
+      <div class="manual-header">
+        <div>
+          <div class="manual-title">Shared Cloud Movies</div>
+          <div class="manager-sub">These added titles are live for everyone using the family app.</div>
+        </div>
+      </div>
+      ${customItems.length ? `<div class="manual-list">${customItems.map(item => `
+        <div class="manual-item">
+          <div class="manual-item-main">
+            <div class="manual-item-title">${item.t}</div>
+            <div class="manual-item-meta">${item.genre} • ${item.s === 'prime' ? 'Prime / Digital' : `DVD • Page ${item.p || '?'} • Slot ${item.i || '?'}`}</div>
+          </div>
+          <button class="delete-btn" data-delete-id="${item.dbId}">Delete</button>
+        </div>`).join('')}</div>` : `<div class="empty-note">No cloud-added movies yet.</div>`}
+    </div>`;
 }
 
 function render(data, q='') {
@@ -761,7 +966,7 @@ function render(data, q='') {
   noRes.style.display='none';
   const byGenre = {};
   filtered.forEach(d=>{if(!byGenre[d.genre])byGenre[d.genre]=[];byGenre[d.genre].push(d);});
-  const keys = [...new Set(sorted.map(d=>d.genre))].filter(g=>byGenre[g]);
+  const keys = [...new Set(sortMovies(data).map(d=>d.genre))].filter(g=>byGenre[g]);
   keys.forEach(genre => {
     const items = byGenre[genre];
     const sec = document.createElement('div');
@@ -776,14 +981,14 @@ function render(data, q='') {
         <tbody>${items.map(d=>{
           const isPrime = d.s==='prime';
           return `<tr class="${isPrime?'prime-row':''}">
-            <td class="title-cell">${d.t}${seriesPill(d.seriesInfo)}</td>
+            <td class="title-cell">${d.t}${seriesPill(d.seriesInfo)}${d.isCustom ? ' <span class="series-pill">Live</span>' : ''}</td>
             <td>${isPrime
               ? '<span class="source-badge badge-prime">▶ Prime</span>'
               : '<span class="source-badge badge-dvd">📀 DVD</span>'
             }</td>
             <td class="location-cell">${isPrime
               ? '<span class="prime-location">Digital</span>'
-              : `<div style="display:inline-flex;gap:4px"><span class="page-num">Pg ${d.p}</span><span class="insert-num">${d.i}</span></div>`
+              : `<div style="display:inline-flex;gap:4px"><span class="page-num">Pg ${d.p || '?'}</span><span class="insert-num">${d.i || '?'}</span></div>`
             }</td>
           </tr>`;
         }).join('')}</tbody>
@@ -793,8 +998,14 @@ function render(data, q='') {
 }
 
 let activeGenre='all', activeSource='all', searchVal='';
-function applyFilters(){
-  let data = sorted;
+async function applyFilters(forceReload=false){
+  await loadSharedMovies(forceReload);
+  const allMovies = getAllMovies();
+  updateStats(allMovies);
+  renderGenreFilters(allMovies);
+  renderManualList(getCustomMovies());
+  populateGenreSelect();
+  let data = allMovies;
   if(activeSource!=='all') data=data.filter(d=>d.s===activeSource);
   if(activeGenre!=='all') data=data.filter(d=>d.genre===activeGenre);
   render(data, searchVal);
@@ -815,7 +1026,193 @@ gf.addEventListener('click', e=>{
   applyFilters();
 });
 document.getElementById('search').addEventListener('input', e=>{searchVal=e.target.value;applyFilters();});
+
+document.getElementById('toggle-manager').addEventListener('click', () => {
+  managerBody.classList.toggle('hidden');
+});
+
+document.getElementById('movie-source').addEventListener('change', (e) => {
+  const dvdFields = [document.getElementById('movie-page'), document.getElementById('movie-slot')];
+  const isPrime = e.target.value === 'prime';
+  dvdFields.forEach(el => {
+    el.disabled = isPrime;
+    if (isPrime) el.value = '';
+  });
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  const title = (fd.get('title') || '').toString().trim();
+  if (!title) return;
+  const source = (fd.get('source') || 'dvd').toString();
+  const genre = (fd.get('genre') || getGenre(title)).toString();
+  const page = (fd.get('page') || '').toString().trim();
+  const slot = (fd.get('slot') || '').toString().trim().toUpperCase();
+  if (source === 'dvd' && (!page || !slot)) {
+    setManagerStatus('For DVDs, add both a page and slot.', false);
+    return;
+  }
+
+  try {
+    const payload = {
+      title,
+      genre,
+      source,
+      page: source === 'dvd' ? Number(page) : null,
+      slot: source === 'dvd' ? slot : null,
+    };
+    const response = await fetch(MOVIES_ENDPOINT, {
+      method: 'POST',
+      headers: supabaseHeaders({
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      }),
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) throw new Error(`Insert failed: ${response.status}`);
+    form.reset();
+    document.getElementById('movie-source').value = 'dvd';
+    document.getElementById('movie-source').dispatchEvent(new Event('change'));
+    setManagerStatus(`Saved "${title}" to the family cloud app.`);
+    await applyFilters(true);
+  } catch (error) {
+    console.error(error);
+    setManagerStatus('Could not save the movie right now.', false);
+  }
+});
+
+manualSection.addEventListener('click', async (e) => {
+  const id = e.target.dataset.deleteId;
+  if (!id) return;
+  try {
+    const response = await fetch(`${MOVIES_ENDPOINT}?id=eq.${id}`, {
+      method: 'DELETE',
+      headers: supabaseHeaders({ Prefer: 'return=minimal' }),
+    });
+    if (!response.ok) throw new Error(`Delete failed: ${response.status}`);
+    setManagerStatus('Movie removed from the family cloud app.');
+    await applyFilters(true);
+  } catch (error) {
+    console.error(error);
+    setManagerStatus('Could not delete the movie right now.', false);
+  }
+});
+
+document.getElementById('export-movies').addEventListener('click', () => {
+  const items = getCustomMovies().map(item => ({
+    id: item.dbId,
+    title: item.t,
+    genre: item.genre,
+    source: item.s,
+    page: item.p || null,
+    slot: item.i || null,
+    created_at: item.created_at || null,
+  }));
+  const blob = new Blob([JSON.stringify(items, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'family-movie-vault-cloud-movies.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  setManagerStatus('Exported your cloud-added movies file.');
+});
+populateGenreSelect();
+  let data = allMovies;
+  if(activeSource!=='all') data=data.filter(d=>d.s===activeSource);
+  if(activeGenre!=='all') data=data.filter(d=>d.genre===activeGenre);
+  render(data, searchVal);
+}
+
+document.querySelector('.source-toggle').addEventListener('click', e=>{
+  if(!e.target.dataset.source) return;
+  document.querySelectorAll('.source-toggle .filter-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  activeSource=e.target.dataset.source;
+  applyFilters();
+});
+gf.addEventListener('click', e=>{
+  if(!e.target.dataset.genre) return;
+  document.querySelectorAll('#genre-filters .filter-btn').forEach(b=>b.classList.remove('active'));
+  e.target.classList.add('active');
+  activeGenre=e.target.dataset.genre;
+  applyFilters();
+});
+document.getElementById('search').addEventListener('input', e=>{searchVal=e.target.value;applyFilters();});
+
+document.getElementById('toggle-manager').addEventListener('click', () => {
+  managerBody.classList.toggle('hidden');
+});
+
+document.getElementById('movie-source').addEventListener('change', (e) => {
+  const dvdFields = [document.getElementById('movie-page'), document.getElementById('movie-slot')];
+  const isPrime = e.target.value === 'prime';
+  dvdFields.forEach(el => {
+    el.disabled = isPrime;
+    if (isPrime) el.value = '';
+  });
+});
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const fd = new FormData(form);
+  const title = (fd.get('title') || '').toString().trim();
+  if (!title) return;
+  const source = (fd.get('source') || 'dvd').toString();
+  const genre = (fd.get('genre') || getGenre(title)).toString();
+  const page = (fd.get('page') || '').toString().trim();
+  const slot = (fd.get('slot') || '').toString().trim().toUpperCase();
+  if (source === 'dvd' && (!page || !slot)) {
+    managerStatus.textContent = 'For DVDs, add both a page and slot.';
+    managerStatus.style.color = '#ffb3b3';
+    return;
+  }
+  const items = readCustomMovies();
+  items.push({
+    customId: 'm_' + Date.now(),
+    t: title,
+    s: source,
+    genre,
+    p: source === 'dvd' ? page : '',
+    i: source === 'dvd' ? slot : '',
+  });
+  saveCustomMovies(items);
+  form.reset();
+  document.getElementById('movie-source').value = 'dvd';
+  document.getElementById('movie-source').dispatchEvent(new Event('change'));
+  managerStatus.textContent = `Saved "${title}".`;
+  managerStatus.style.color = '#9ee29e';
+  applyFilters();
+});
+
+manualSection.addEventListener('click', (e) => {
+  const id = e.target.dataset.deleteId;
+  if (!id) return;
+  const items = readCustomMovies().filter(item => item.customId !== id);
+  saveCustomMovies(items);
+  managerStatus.textContent = 'Movie removed.';
+  managerStatus.style.color = '#9ee29e';
+  applyFilters();
+});
+
+document.getElementById('export-movies').addEventListener('click', () => {
+  const items = readCustomMovies();
+  const blob = new Blob([JSON.stringify(items, null, 2)], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'family-movie-vault-added-movies.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  managerStatus.textContent = 'Exported your added movies file.';
+  managerStatus.style.color = '#9ee29e';
+});
+
+populateGenreSelect();
 applyFilters();
+document.getElementById('movie-source').dispatchEvent(new Event('change'));
+
 
 
 if ('serviceWorker' in navigator) {
