@@ -176,7 +176,7 @@
     <div class="manager-top">
       <div>
         <div class="manager-title">Manual Add</div>
-        <div class="manager-sub">Add new movies right from your phone or browser. Entries save on this device.</div>
+        <div class="manager-sub">Add new movies right from your phone or browser. Entries save to your shared family cloud.</div>
       </div>
       <button class="manager-toggle" id="toggle-manager">Add / Manage Movies</button>
     </div>
@@ -845,7 +845,7 @@ async function loadCloudMovies(force=false) {
     console.error(error);
     cloudMoviesCache = [];
     cloudLoaded = true;
-    setManagerStatus('Cloud not reachable right now. You can still add locally on this device.', false);
+    setManagerStatus('Cloud not reachable right now. Check your connection and refresh.', false);
     return cloudMoviesCache;
   }
 }
@@ -867,7 +867,7 @@ function enhanceMovie(d, isCustom=false) {
 }
 
 function allGenresForSelect() {
-  return [...new Set([...genreOrder, ...ALL.map(d => getGenre(d.t)), ...getCustomMovies().map(d => d.genre || getGenre(d.t))])].filter(Boolean);
+  return [...new Set([...genreOrder, ...getCustomMovies().map(d => d.genre || getGenre(d.t))])].filter(Boolean);
 }
 
 function populateGenreSelect() {
@@ -878,11 +878,11 @@ function populateGenreSelect() {
 }
 
 function getBaseMovies() {
-  return ALL.map(d => enhanceMovie(d, false));
+  return [];
 }
 
 function getCustomMovies() {
-  return [...cloudMoviesCache, ...readFallbackMovies()].map(d => enhanceMovie(d, true));
+  return [...cloudMoviesCache].map(d => enhanceMovie(d, false));
 }
 
 function sortMovies(list) {
@@ -906,7 +906,7 @@ function sortMovies(list) {
 }
 
 function getAllMovies() {
-  return sortMovies([...getBaseMovies(), ...getCustomMovies()]);
+  return sortMovies(getCustomMovies());
 }
 
 function updateStats(data) {
@@ -947,11 +947,11 @@ function renderManualList(customItems) {
     <div class="manual-section">
       <div class="manual-header">
         <div>
-          <div class="manual-title">My Added Movies</div>
-          <div class="manager-sub">Only visible on this device unless you export and import elsewhere.</div>
+          <div class="manual-title">Manage Cloud Movies</div>
+          <div class="manager-sub">Showing your most recently added shared cloud movies.</div>
         </div>
       </div>
-      ${customItems.length ? `<div class="manual-list">${customItems.map(item => `
+      ${customItems.length ? `<div class="manual-list">${customItems.slice(0, 50).map(item => `
         <div class="manual-item">
           <div class="manual-item-main">
             <div class="manual-item-title">${item.t}</div>
@@ -993,7 +993,7 @@ function render(data, q='') {
         <tbody>${items.map(d=>{
           const isPrime = d.s==='prime';
           return `<tr class="${isPrime?'prime-row':''}">
-            <td class="title-cell">${d.t}${seriesPill(d.seriesInfo)}${d.isCustom ? ' <span class="series-pill">Manual</span>' : ''}</td>
+            <td class="title-cell">${d.t}${seriesPill(d.seriesInfo)}</td>
             <td>${isPrime
               ? '<span class="source-badge badge-prime">▶ Prime</span>'
               : '<span class="source-badge badge-dvd">📀 DVD</span>'
@@ -1087,18 +1087,7 @@ form.addEventListener('submit', async (e) => {
     setManagerStatus(`Saved "${title}" to the shared family cloud.`);
   } catch (error) {
     console.error(error);
-    const items = readFallbackMovies();
-    items.push({
-      customId: 'local_' + Date.now(),
-      t: title,
-      s: source,
-      genre,
-      p: source === 'dvd' ? page : '',
-      i: source === 'dvd' ? slot : '',
-      created_at: new Date().toISOString(),
-    });
-    saveFallbackMovies(items);
-    setManagerStatus(`Cloud save failed, so "${title}" was saved on this device only.`, false);
+    setManagerStatus(`Cloud save failed for "${title}". Please try again.`, false);
   }
 
   form.reset();
@@ -1124,16 +1113,12 @@ manualSection.addEventListener('click', async (e) => {
       console.error(error);
       setManagerStatus('Could not delete this cloud movie right now.', false);
     }
-  } else {
-    const items = readFallbackMovies().filter(item => item.customId !== id);
-    saveFallbackMovies(items);
-    setManagerStatus('Movie removed from this device.');
   }
   applyFilters();
 });
 
 document.getElementById('export-movies').addEventListener('click', () => {
-  const items = getCustomMovies().map(item => ({
+  const items = cloudMoviesCache.map(item => ({
     id: item.dbId || null,
     customId: item.customId || null,
     title: item.t,
@@ -1147,16 +1132,23 @@ document.getElementById('export-movies').addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'family-movie-vault-added-movies.json';
+  a.download = 'family-movie-vault-cloud-movies.json';
   a.click();
   URL.revokeObjectURL(url);
-  setManagerStatus('Exported your added movies file.');
+  setManagerStatus('Exported your shared cloud movies file.');
 });
 
 populateGenreSelect();
 applyFilters();
 document.getElementById('movie-source').dispatchEvent(new Event('change'));
-loadCloudMovies().then(() => applyFilters());
+loadCloudMovies().then((movies) => {
+  applyFilters();
+  if (Array.isArray(movies) && movies.length) {
+    setManagerStatus(`Loaded ${movies.length} movies from your shared cloud.`);
+  } else {
+    setManagerStatus('No cloud movies found yet. Add one or import your library.', false);
+  }
+});
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
