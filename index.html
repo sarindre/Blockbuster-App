@@ -176,7 +176,7 @@
     <div class="manager-top">
       <div>
         <div class="manager-title">Manual Add</div>
-        <div class="manager-sub">Add new movies right from your phone or browser. Entries save to your shared family cloud app.</div>
+        <div class="manager-sub">Add new movies right from your phone or browser. Entries save on this device.</div>
       </div>
       <button class="manager-toggle" id="toggle-manager">Add / Manage Movies</button>
     </div>
@@ -209,7 +209,7 @@
         </div>
         <div class="manager-actions">
           <button class="manager-btn primary" type="submit">Save Movie</button>
-          <button class="manager-btn secondary" type="button" id="export-movies">Export Cloud Added Movies</button>
+          <button class="manager-btn secondary" type="button" id="export-movies">Export My Added Movies</button>
         </div>
         <div class="manager-status" id="manager-status"></div>
       </form>
@@ -781,18 +781,32 @@ function getGenre(t) {
 const genreOrder = ['Harry Potter','Lord of the Rings / Hobbit','Star Wars','Resident Evil','Alien Franchise','Pirates of the Caribbean','Hunger Games','Vampire & Supernatural','Superhero','Action / Adventure','Sci-Fi','Fantasy','Thriller / Crime','Drama','Comedy','Horror','Horror-Comedy','Pixar','Family / Animation','Illumination / Animation','Spooky Animation','Special / Comedy','Other'];
 
 
-const SUPABASE_URL = 'https://prgivcziksnywptcuzoh.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_4emn4Phg_l_iIVWukA67JQ_aeofzxlD';
-const MOVIES_ENDPOINT = `${SUPABASE_URL}/rest/v1/movies`;
-
-let sharedMoviesCache = [];
-let sharedMoviesLoaded = false;
-
+const CUSTOM_KEY = 'familyMovieVaultCustomMovies';
 const manualSection = document.getElementById('manual-movie-section');
 const managerBody = document.getElementById('manager-body');
 const managerStatus = document.getElementById('manager-status');
 const genreSelect = document.getElementById('movie-genre');
 const form = document.getElementById('add-movie-form');
+const SUPABASE_URL = 'https://prgivcziksnywptcuzoh.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4emn4Phg_l_iIVWukA67JQ_aeofzxlD';
+const MOVIES_ENDPOINT = `${SUPABASE_URL}/rest/v1/movies`;
+const LOCAL_FALLBACK_KEY = 'familyMovieVaultCloudFallback';
+let cloudMoviesCache = [];
+let cloudLoaded = false;
+
+function readFallbackMovies() {
+  try {
+    const raw = localStorage.getItem(LOCAL_FALLBACK_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveFallbackMovies(items) {
+  localStorage.setItem(LOCAL_FALLBACK_KEY, JSON.stringify(items));
+}
 
 function setManagerStatus(message, ok=true) {
   managerStatus.textContent = message;
@@ -807,15 +821,15 @@ function supabaseHeaders(extra = {}) {
   };
 }
 
-async function loadSharedMovies(force=false) {
-  if (sharedMoviesLoaded && !force) return sharedMoviesCache;
+async function loadCloudMovies(force=false) {
+  if (cloudLoaded && !force) return cloudMoviesCache;
   try {
     const response = await fetch(`${MOVIES_ENDPOINT}?select=id,title,genre,source,page,slot,created_at&order=created_at.desc`, {
       headers: supabaseHeaders()
     });
     if (!response.ok) throw new Error(`Load failed: ${response.status}`);
     const rows = await response.json();
-    sharedMoviesCache = (Array.isArray(rows) ? rows : []).map(row => ({
+    cloudMoviesCache = (Array.isArray(rows) ? rows : []).map(row => ({
       customId: `db_${row.id}`,
       dbId: row.id,
       t: row.title || '',
@@ -825,14 +839,14 @@ async function loadSharedMovies(force=false) {
       i: row.slot ?? '',
       created_at: row.created_at || null,
     }));
-    sharedMoviesLoaded = true;
-    return sharedMoviesCache;
+    cloudLoaded = true;
+    return cloudMoviesCache;
   } catch (error) {
     console.error(error);
-    setManagerStatus('Could not reach the cloud database right now.', false);
-    sharedMoviesCache = [];
-    sharedMoviesLoaded = true;
-    return sharedMoviesCache;
+    cloudMoviesCache = [];
+    cloudLoaded = true;
+    setManagerStatus('Cloud not reachable right now. You can still add locally on this device.', false);
+    return cloudMoviesCache;
   }
 }
 
@@ -848,14 +862,12 @@ function enhanceMovie(d, isCustom=false) {
     i: d.i || '',
     isCustom,
     customId: d.customId || null,
-    dbId: d.dbId || null,
-    created_at: d.created_at || null,
     seriesInfo: SERIES[title] || null,
   };
 }
 
 function allGenresForSelect() {
-  return [...new Set([...genreOrder, ...ALL.map(d => getGenre(d.t)), ...sharedMoviesCache.map(d => d.genre || getGenre(d.t))])].filter(Boolean);
+  return [...new Set([...genreOrder, ...ALL.map(d => getGenre(d.t)), ...getCustomMovies().map(d => d.genre || getGenre(d.t))])].filter(Boolean);
 }
 
 function populateGenreSelect() {
@@ -870,7 +882,7 @@ function getBaseMovies() {
 }
 
 function getCustomMovies() {
-  return sharedMoviesCache.map(d => enhanceMovie(d, true));
+  return [...cloudMoviesCache, ...readFallbackMovies()].map(d => enhanceMovie(d, true));
 }
 
 function sortMovies(list) {
@@ -935,8 +947,8 @@ function renderManualList(customItems) {
     <div class="manual-section">
       <div class="manual-header">
         <div>
-          <div class="manual-title">Shared Cloud Movies</div>
-          <div class="manager-sub">These added titles are live for everyone using the family app.</div>
+          <div class="manual-title">My Added Movies</div>
+          <div class="manager-sub">Only visible on this device unless you export and import elsewhere.</div>
         </div>
       </div>
       ${customItems.length ? `<div class="manual-list">${customItems.map(item => `
@@ -945,8 +957,8 @@ function renderManualList(customItems) {
             <div class="manual-item-title">${item.t}</div>
             <div class="manual-item-meta">${item.genre} • ${item.s === 'prime' ? 'Prime / Digital' : `DVD • Page ${item.p || '?'} • Slot ${item.i || '?'}`}</div>
           </div>
-          <button class="delete-btn" data-delete-id="${item.dbId}">Delete</button>
-        </div>`).join('')}</div>` : `<div class="empty-note">No cloud-added movies yet.</div>`}
+          <button class="delete-btn" data-delete-id="${item.customId}">Delete</button>
+        </div>`).join('')}</div>` : `<div class="empty-note">No manually added movies yet.</div>`}
     </div>`;
 }
 
@@ -981,7 +993,7 @@ function render(data, q='') {
         <tbody>${items.map(d=>{
           const isPrime = d.s==='prime';
           return `<tr class="${isPrime?'prime-row':''}">
-            <td class="title-cell">${d.t}${seriesPill(d.seriesInfo)}${d.isCustom ? ' <span class="series-pill">Live</span>' : ''}</td>
+            <td class="title-cell">${d.t}${seriesPill(d.seriesInfo)}${d.isCustom ? ' <span class="series-pill">Manual</span>' : ''}</td>
             <td>${isPrime
               ? '<span class="source-badge badge-prime">▶ Prime</span>'
               : '<span class="source-badge badge-dvd">📀 DVD</span>'
@@ -998,8 +1010,7 @@ function render(data, q='') {
 }
 
 let activeGenre='all', activeSource='all', searchVal='';
-async function applyFilters(forceReload=false){
-  await loadSharedMovies(forceReload);
+function applyFilters(){
   const allMovies = getAllMovies();
   updateStats(allMovies);
   renderGenreFilters(allMovies);
@@ -1054,14 +1065,15 @@ form.addEventListener('submit', async (e) => {
     return;
   }
 
+  const payload = {
+    title,
+    genre,
+    source,
+    page: source === 'dvd' ? Number(page) : null,
+    slot: source === 'dvd' ? slot : null,
+  };
+
   try {
-    const payload = {
-      title,
-      genre,
-      source,
-      page: source === 'dvd' ? Number(page) : null,
-      slot: source === 'dvd' ? slot : null,
-    };
     const response = await fetch(MOVIES_ENDPOINT, {
       method: 'POST',
       headers: supabaseHeaders({
@@ -1071,37 +1083,59 @@ form.addEventListener('submit', async (e) => {
       body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`Insert failed: ${response.status}`);
-    form.reset();
-    document.getElementById('movie-source').value = 'dvd';
-    document.getElementById('movie-source').dispatchEvent(new Event('change'));
-    setManagerStatus(`Saved "${title}" to the family cloud app.`);
-    await applyFilters(true);
+    await loadCloudMovies(true);
+    setManagerStatus(`Saved "${title}" to the shared family cloud.`);
   } catch (error) {
     console.error(error);
-    setManagerStatus('Could not save the movie right now.', false);
+    const items = readFallbackMovies();
+    items.push({
+      customId: 'local_' + Date.now(),
+      t: title,
+      s: source,
+      genre,
+      p: source === 'dvd' ? page : '',
+      i: source === 'dvd' ? slot : '',
+      created_at: new Date().toISOString(),
+    });
+    saveFallbackMovies(items);
+    setManagerStatus(`Cloud save failed, so "${title}" was saved on this device only.`, false);
   }
+
+  form.reset();
+  document.getElementById('movie-source').value = 'dvd';
+  document.getElementById('movie-source').dispatchEvent(new Event('change'));
+  applyFilters();
 });
 
 manualSection.addEventListener('click', async (e) => {
   const id = e.target.dataset.deleteId;
   if (!id) return;
-  try {
-    const response = await fetch(`${MOVIES_ENDPOINT}?id=eq.${id}`, {
-      method: 'DELETE',
-      headers: supabaseHeaders({ Prefer: 'return=minimal' }),
-    });
-    if (!response.ok) throw new Error(`Delete failed: ${response.status}`);
-    setManagerStatus('Movie removed from the family cloud app.');
-    await applyFilters(true);
-  } catch (error) {
-    console.error(error);
-    setManagerStatus('Could not delete the movie right now.', false);
+  if (id.startsWith('db_')) {
+    const dbId = id.replace('db_', '');
+    try {
+      const response = await fetch(`${MOVIES_ENDPOINT}?id=eq.${dbId}`, {
+        method: 'DELETE',
+        headers: supabaseHeaders({ Prefer: 'return=minimal' }),
+      });
+      if (!response.ok) throw new Error(`Delete failed: ${response.status}`);
+      await loadCloudMovies(true);
+      setManagerStatus('Movie removed from the shared family cloud.');
+    } catch (error) {
+      console.error(error);
+      setManagerStatus('Could not delete this cloud movie right now.', false);
+    }
+  } else {
+    const items = readFallbackMovies().filter(item => item.customId !== id);
+    saveFallbackMovies(items);
+    setManagerStatus('Movie removed from this device.');
   }
+  applyFilters();
 });
 
 document.getElementById('export-movies').addEventListener('click', () => {
   const items = getCustomMovies().map(item => ({
-    id: item.dbId,
+    id: item.dbId || null,
+    customId: item.customId || null,
     title: item.t,
     genre: item.genre,
     source: item.s,
@@ -1113,14 +1147,16 @@ document.getElementById('export-movies').addEventListener('click', () => {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'family-movie-vault-cloud-movies.json';
+  a.download = 'family-movie-vault-added-movies.json';
   a.click();
   URL.revokeObjectURL(url);
-  setManagerStatus('Exported your cloud-added movies file.');
+  setManagerStatus('Exported your added movies file.');
 });
+
 populateGenreSelect();
 applyFilters();
 document.getElementById('movie-source').dispatchEvent(new Event('change'));
+loadCloudMovies().then(() => applyFilters());
 
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
