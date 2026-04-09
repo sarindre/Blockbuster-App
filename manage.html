@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Family Movie Vault</title>
+<title>Recent Cloud Movies</title>
 
 <meta name="theme-color" content="#003087">
 <link rel="manifest" href="manifest.json">
@@ -109,6 +109,12 @@
 
   .manager-panel { background: #0d1b3e; border: 1px solid rgba(255,215,0,0.18); border-radius: 10px; padding: 14px; margin-bottom: 20px; }
 
+  .manager-nav { background: #0d1b3e; border: 1px solid rgba(255,215,0,0.18); border-radius: 10px; padding: 14px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .manager-nav-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--bb-yellow); }
+  .manager-nav-sub { color: rgba(255,255,255,0.72); font-size: 13px; }
+  .manager-nav-btn { font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight:700; letter-spacing:1px; text-transform: uppercase; border-radius:6px; padding: 10px 14px; cursor:pointer; border:1px solid rgba(255,215,0,0.35); background: transparent; color: rgba(255,215,0,0.9); text-decoration:none; }
+
+
   .manager-launch { background: #0d1b3e; border: 1px solid rgba(255,215,0,0.18); border-radius: 10px; padding: 14px; margin-bottom: 20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
   .manager-launch-title { font-family: 'Bebas Neue', sans-serif; font-size: 24px; letter-spacing: 1px; color: var(--bb-yellow); }
   .manager-launch-sub { color: rgba(255,255,255,0.72); font-size: 13px; }
@@ -181,7 +187,7 @@
 <div class="main" id="main-content-wrap">
   <div class="manager-launch">
     <div>
-      <div class="manager-launch-title">Manage Cloud Movies</div>
+      <div class="manager-launch-title">Recent Cloud Movies</div>
       <div class="manager-launch-sub">Open a dedicated page to add, export, and remove movies from your shared family library.</div>
     </div>
     <a class="manager-launch-btn" href="./manage.html">Open Cloud Manager</a>
@@ -189,10 +195,10 @@
   <div class="manager-panel">
     <div class="manager-top">
       <div>
-        <div class="manager-title">Manual Add</div>
+        <div class="manager-title">Add to Cloud Library</div>
         <div class="manager-sub">Add new movies right from your phone or browser. Entries save to your shared family cloud.</div>
       </div>
-      <button class="manager-toggle" id="toggle-manager">Add / Manage Movies</button>
+      <button class="manager-toggle" id="toggle-manager">Hide / Show Form</button>
     </div>
     <div class="manager-body hidden" id="manager-body">
       <form id="add-movie-form">
@@ -961,7 +967,7 @@ function renderManualList(customItems) {
     <div class="manual-section">
       <div class="manual-header">
         <div>
-          <div class="manual-title">Manage Cloud Movies</div>
+          <div class="manual-title">Recent Cloud Movies</div>
           <div class="manager-sub">Showing your most recently added shared cloud movies.</div>
         </div>
       </div>
