@@ -1,4 +1,4 @@
-const CACHE = 'family-movie-vault-v3';
+const CACHE = 'family-movie-vault-v4';
 const ASSETS = ['./','./index.html','./manage.html','./manifest.json','./icon-192.png','./icon-512.png'];
 
 self.addEventListener('install', event => {

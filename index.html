@@ -82,6 +82,24 @@
   .insert-num { background: #0d2b0d; color: #55cc55; border: 1px solid #2a5a2a; padding: 2px 7px; border-radius: 2px; font-size: 11px; font-family: 'Barlow Condensed', sans-serif; font-weight: 600; }
   .prime-location { color: var(--prime-blue); font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 600; letter-spacing: 1px; }
 
+  .status-stack { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; }
+  .status-btn {
+    border:1px solid rgba(255,255,255,0.16);
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.7);
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
+  .status-btn.active.favorite { background: rgba(255,215,0,0.18); color: var(--bb-yellow); border-color: rgba(255,215,0,0.42); }
+  .status-btn.active.watched { background: rgba(80,200,120,0.15); color: #9ee29e; border-color: rgba(80,200,120,0.35); }
+  .status-btn.active.want { background: rgba(0,168,225,0.15); color: var(--prime-blue); border-color: rgba(0,168,225,0.35); }
+
   .no-results { text-align: center; padding: 60px 20px; color: var(--bb-muted); font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 3px; display: none; }
   .footer { background: var(--bb-blue); border-top: 4px solid var(--bb-yellow); padding: 14px 24px; text-align: center; font-family: 'Bebas Neue', sans-serif; font-size: 13px; letter-spacing: 3px; color: rgba(255,215,0,0.55); margin-top: 40px; }
 
@@ -838,7 +856,7 @@ function supabaseHeaders(extra = {}) {
 async function loadCloudMovies(force=false) {
   if (cloudLoaded && !force) return cloudMoviesCache;
   try {
-    const response = await fetch(`${MOVIES_ENDPOINT}?select=id,title,genre,source,page,slot,created_at&order=created_at.desc`, {
+    const response = await fetch(`${MOVIES_ENDPOINT}?select=id,title,genre,source,page,slot,created_at,favorite,watched,want_to_watch&order=created_at.desc`, {
       headers: supabaseHeaders()
     });
     if (!response.ok) throw new Error(`Load failed: ${response.status}`);
@@ -852,6 +870,9 @@ async function loadCloudMovies(force=false) {
       p: row.page ?? '',
       i: row.slot ?? '',
       created_at: row.created_at || null,
+      favorite: !!row.favorite,
+      watched: !!row.watched,
+      want_to_watch: !!row.want_to_watch,
     }));
     cloudLoaded = true;
     return cloudMoviesCache;
@@ -874,8 +895,12 @@ function enhanceMovie(d, isCustom=false) {
     s: d.s || 'dvd',
     p: d.p || '',
     i: d.i || '',
+    favorite: !!d.favorite,
+    watched: !!d.watched,
+    want_to_watch: !!d.want_to_watch,
     isCustom,
     customId: d.customId || null,
+    dbId: d.dbId || null,
     seriesInfo: SERIES[title] || null,
   };
 }
@@ -976,6 +1001,38 @@ function renderManualList(customItems) {
     </div>`;
 }
 
+
+function statusButtons(d) {
+  return `<div class="status-stack">
+    <button class="status-btn favorite ${d.favorite ? 'active' : ''}" data-status-action="favorite" data-id="${d.dbId || ''}" title="Favorite">★ Fav</button>
+    <button class="status-btn watched ${d.watched ? 'active' : ''}" data-status-action="watched" data-id="${d.dbId || ''}" title="Watched">👁 Watched</button>
+    <button class="status-btn want ${d.want_to_watch ? 'active' : ''}" data-status-action="want_to_watch" data-id="${d.dbId || ''}" title="Want to Watch">📌 Want</button>
+  </div>`;
+}
+
+async function toggleMovieStatus(id, field) {
+  const movie = cloudMoviesCache.find(m => String(m.dbId) === String(id));
+  if (!movie) return;
+  const next = !movie[field];
+  try {
+    const response = await fetch(`${MOVIES_ENDPOINT}?id=eq.${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: supabaseHeaders({
+        'Content-Type': 'application/json',
+        Prefer: 'return=representation',
+      }),
+      body: JSON.stringify({ [field]: next }),
+    });
+    if (!response.ok) throw new Error(`Update failed: ${response.status}`);
+    movie[field] = next;
+    setManagerStatus(`${movie.t}: ${field.replaceAll('_',' ')} ${next ? 'enabled' : 'cleared'}.`);
+    applyFilters();
+  } catch (error) {
+    console.error(error);
+    setManagerStatus('Could not update movie status right now.', false);
+  }
+}
+
 function render(data, q='') {
   const main = document.getElementById('main-content');
   const noRes = document.getElementById('no-results');
@@ -1003,7 +1060,7 @@ function render(data, q='') {
         <div class="genre-count">${items.length} title${items.length!==1?'s':''}</div>
       </div>
       <table class="dvd-table">
-        <thead><tr><th>Title</th><th>Source</th><th class="center">Location</th></tr></thead>
+        <thead><tr><th>Title</th><th>Source</th><th class="center">Location</th><th class="center">Status</th></tr></thead>
         <tbody>${items.map(d=>{
           const isPrime = d.s==='prime';
           return `<tr class="${isPrime?'prime-row':''}">
@@ -1016,6 +1073,7 @@ function render(data, q='') {
               ? '<span class="prime-location">Digital</span>'
               : `<div style="display:inline-flex;gap:4px"><span class="page-num">Pg ${d.p || '?'}</span><span class="insert-num">${d.i || '?'}</span></div>`
             }</td>
+            <td class="location-cell">${statusButtons(d)}</td>
           </tr>`;
         }).join('')}</tbody>
       </table>`;
@@ -1052,6 +1110,12 @@ gf.addEventListener('click', e=>{
 });
 document.getElementById('search').addEventListener('input', e=>{searchVal=e.target.value;applyFilters();});
 
+document.getElementById('main-content').addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-status-action]');
+  if (!btn) return;
+  await toggleMovieStatus(btn.dataset.id, btn.dataset.statusAction);
+});
+
 document.getElementById('toggle-manager').addEventListener('click', () => {
   managerBody.classList.toggle('hidden');
 });
@@ -1085,6 +1149,9 @@ form.addEventListener('submit', async (e) => {
     source,
     page: source === 'dvd' ? Number(page) : null,
     slot: source === 'dvd' ? slot : null,
+    favorite: false,
+    watched: false,
+    want_to_watch: false,
   };
 
   try {
